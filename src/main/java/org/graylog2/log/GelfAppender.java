@@ -207,6 +207,14 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
     }
     
     /**
+     * @param messageRateRelaxPeriod the messageRateRelaxPeriod to set
+     */
+    public void setMessageRateRelaxPeriod(int messageRateRelaxPeriod)
+    {
+        this.messageRateRelaxPeriod = messageRateRelaxPeriod;
+    }
+    
+    /**
      * @param maxChunkSize the maxChunkSize to set
      */
     public void setMaxChunkSize(int maxChunkSize)
