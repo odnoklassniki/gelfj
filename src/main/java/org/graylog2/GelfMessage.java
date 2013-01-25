@@ -18,7 +18,6 @@ public class GelfMessage {
     private static final String ID_NAME = "id";
     private static final String GELF_VERSION = "1.0";
     private static final byte[] GELF_CHUNKED_ID = new byte[]{0x1e, 0x0f};
-    private static final int MAXIMUM_CHUNK_SIZE = 1420;
 
     private String version = GELF_VERSION;
     private String host;
@@ -58,14 +57,18 @@ public class GelfMessage {
     
     private void json(Appendable sb, String key, String value, boolean quote) throws IOException
     {
+        if (value == null)
+            return;
+        
         sb.append('"').append(key).append('"').append(':');
         
         if (quote) {
             sb.append('"');
             escape(value,sb);
             sb.append('"').append(',');
+        } else {
+            sb.append(value).append(',');
         }
-        sb.append(value).append(',');
     }
     
     private void escape(String s, Appendable sb) throws IOException {
@@ -130,7 +133,7 @@ public class GelfMessage {
 
         return bos.toByteArray();
     }
-    
+
     public String toJson() {
         
         StringBuilder json = new StringBuilder(64);
@@ -171,7 +174,6 @@ public class GelfMessage {
             json(json,"line", getLine(),true);
         }
         
-        json.append( " fields = { ");
 
         for (Map.Entry<String, Object> additionalField : additonalFields.entrySet()) {
             if (!ID_NAME.equals(additionalField.getKey())) {
@@ -181,53 +183,37 @@ public class GelfMessage {
             }
         }
 
-        json.append('}').append('}');
+        json.append('}');
     }
 
-    public List<byte[]> toDatagrams() {
+    public List<byte[]> toDatagrams(int maxChunkSize) {
         byte[] messageBytes = toGzipMessage();
         List<byte[]> datagrams = new ArrayList<byte[]>();
-        if (messageBytes.length > MAXIMUM_CHUNK_SIZE) {
-            sliceDatagrams(messageBytes, datagrams);
+        if (messageBytes.length > maxChunkSize) {
+            sliceDatagrams(messageBytes, datagrams, maxChunkSize);
         } else {
             datagrams.add(messageBytes);
         }
         return datagrams;
     }
 
-    private void sliceDatagrams(byte[] messageBytes, List<byte[]> datagrams) {
+    private void sliceDatagrams(byte[] messageBytes, List<byte[]> datagrams, int maxChunkSize) {
         int messageLength = messageBytes.length;
         byte[] messageId = ByteBuffer.allocate(8)
             .putInt((int) System.currentTimeMillis())       // 4 least-significant-bytes of the time in millis
             .put(hostBytes)                                // 4 least-significant-bytes of the host
             .array();
 
-        int num = ((Double) Math.ceil((double) messageLength / MAXIMUM_CHUNK_SIZE)).intValue();
+        int num = ((Double) Math.ceil((double) messageLength / maxChunkSize)).intValue();
         for (int idx = 0; idx < num; idx++) {
             byte[] header = concatByteArray(GELF_CHUNKED_ID, concatByteArray(messageId, new byte[]{(byte) idx, (byte) num}));
-            int from = idx * MAXIMUM_CHUNK_SIZE;
-            int to = from + MAXIMUM_CHUNK_SIZE;
+            int from = idx * maxChunkSize;
+            int to = from + maxChunkSize;
             if (to >= messageLength) {
                 to = messageLength;
             }
             byte[] datagram = concatByteArray(header, messageBytes, from, to);
             datagrams.add(datagram);
-        }
-    }
-
-    private byte[] gzipMessage(String message) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(message.length());
-
-        try {
-            GZIPOutputStream stream = new GZIPOutputStream(bos);
-            stream.write(message.getBytes());
-            stream.finish();
-            stream.close();
-            byte[] zipped = bos.toByteArray();
-            bos.close();
-            return zipped;
-        } catch (IOException e) {
-            return null;
         }
     }
 

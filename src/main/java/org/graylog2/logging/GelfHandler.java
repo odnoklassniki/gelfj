@@ -124,7 +124,7 @@ public class GelfHandler
     {
       try
       {
-        gelfSender = new GelfSender( graylogHost, graylogPort );
+        gelfSender = new GelfSender( graylogHost, graylogPort, GelfSender.DEFAULT_CHUNK_SIZE );
       }
       catch ( UnknownHostException e )
       {

@@ -17,6 +17,8 @@ public class GelfMessageTest {
         GelfMessage message = new GelfMessage("Short", "Long", new Date(), "1");
         message.addField("id", "LOLCAT").addField("_id", "typos in my closet");
 
+        
+
         String data = message.toJson();
         Map resultingMap = (Map) JSONValue.parse(data);
         assertNull(resultingMap.get("_id"));
@@ -30,7 +32,7 @@ public class GelfMessageTest {
             longString += longString;
         }
         GelfMessage message = new GelfMessage("Long", longString, new Date(), "1");
-        List<byte[]> bytes2 = message.toDatagrams();
+        List<byte[]> bytes2 = message.toDatagrams(GelfSender.DEFAULT_CHUNK_SIZE);
         assertEquals(2, bytes2.size());
         assertTrue(Arrays.equals(Arrays.copyOfRange(bytes2.get(0), 10, 11), new byte[] {0x00}));
         assertTrue(Arrays.equals(Arrays.copyOfRange(bytes2.get(0), 11, 12), new byte[] {0x02}));
@@ -41,7 +43,7 @@ public class GelfMessageTest {
     @Test
     public void testSimpleMessage() throws Exception {
         GelfMessage message = new GelfMessage("Short", "Long", new Date(), "1");
-        List<byte[]> bytes = message.toDatagrams();
+        List<byte[]> bytes = message.toDatagrams(GelfSender.DEFAULT_CHUNK_SIZE);
         assertEquals(1, bytes.size());
     }
 

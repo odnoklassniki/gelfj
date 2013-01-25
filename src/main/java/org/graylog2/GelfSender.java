@@ -7,6 +7,7 @@ import java.util.List;
 public class GelfSender {
 
     private static final int DEFAULT_PORT = 12201;
+    public static final int DEFAULT_CHUNK_SIZE = 1420;
 
     private static final int PORT_MIN = 8000;
     private static final int PORT_MAX = 8888;
@@ -14,15 +15,19 @@ public class GelfSender {
     private InetAddress host;
     private int port;
     private DatagramSocket socket;
+    
+    private final int maxChunkSize;
 
     public GelfSender(String host) throws UnknownHostException, SocketException {
-        this(host, DEFAULT_PORT);
+        this(host, DEFAULT_PORT, DEFAULT_CHUNK_SIZE);
     }
 
-    public GelfSender(String host, int port) throws UnknownHostException, SocketException {
+    public GelfSender(String host, int port, int maxChunkSize) throws UnknownHostException, SocketException {
         this.host = InetAddress.getByName(host);
         this.port = port;
         this.socket = initiateSocket();
+        
+        this.maxChunkSize = maxChunkSize;
     }
 
     private DatagramSocket initiateSocket() throws SocketException {
@@ -45,7 +50,7 @@ public class GelfSender {
     }
 
     public boolean sendMessage(GelfMessage message) {
-        return message.isValid() && sendDatagrams(message.toDatagrams());
+        return message.isValid() && sendDatagrams(message.toDatagrams(maxChunkSize));
     }
 
     public boolean sendDatagrams(List<byte[]> bytesList) {
