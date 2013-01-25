@@ -38,6 +38,7 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
     private boolean addExtendedInformation;
     private Map<String, String> fields;
 
+    
     public GelfAppender() {
         super();
     }
