@@ -22,6 +22,7 @@ To use GELF Facility as appender in Log4j (XML configuration format):
 
     <appender name="graylog2" class="org.graylog2.log.GelfAppender">
         <param name="graylogHost" value="192.168.0.201"/>
+        <param name="graylogHostMap" value="{ 'srve.+':'192.168.0.201','srvd.+':'192.168.0.201', }"/>
         <param name="originHost" value="my.machine.example.com"/>
         <param name="extractStacktrace" value="true"/>
         <param name="addExtendedInformation" value="true"/>
@@ -59,11 +60,17 @@ Options
 GelfAppender supports the following options:
 
 - **graylogHost**: Graylog2 server where it will send the GELF messages
+- **graylogHostMap**: Mapping betwen regex match of hostname to Graylog2 servers where it will send the GELF messages
 - **graylogPort**: Port on which the Graylog2 server is listening; default 12201 (*optional*)
 - **originHost**: Name of the originating host; defaults to the local hostname (*optional*)
 - **extractStacktrace** (true/false): Add stacktraces to the GELF message; default false (*optional*)
 - **addExtendedInformation** (true/false): Add extended information like Log4j's NDC/MDC; default false (*optional*)
 - **facility**: Facility which to use in the GELF message; default "gelf-java"
+- **messageRateLimit**: Limit number of messages sent by this host per second
+- **messageRateRelaxPeiod**: Limit number of messages is not applied this number of seconds sice appender start. Give chance to application to log more when starting up.
+- **maxChunkSize**: GELF chunk maximum size. 1420 is default
+
+
 
 Logging Handler
 ---------------
