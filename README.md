@@ -67,8 +67,9 @@ GelfAppender supports the following options:
 - **addExtendedInformation** (true/false): Add extended information like Log4j's NDC/MDC; default false (*optional*)
 - **facility**: Facility which to use in the GELF message; default "gelf-java"
 - **messageRateLimit**: Limit number of messages sent by this host per second
-- **messageRateRelaxPeiod**: Limit number of messages is not applied this number of seconds sice appender start. Give chance to application to log more when starting up.
+- **messageRateRelaxPeriod**: Limit number of messages is not applied this number of seconds sice appender start. Give chance to application to log more when starting up.
 - **maxChunkSize**: GELF chunk maximum size. 1420 is default
+- **addLocation**: Extract file name and line number of message logger. This is slow. Default is false.
 
 
 

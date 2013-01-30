@@ -35,6 +35,7 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
     private GelfSender gelfSender;
     private boolean extractStacktrace;
     private boolean addExtendedInformation;
+    private boolean addLocation = false;
     private Map<String, String> fields;
 
     private int messageRateLimit = 0;
@@ -85,7 +86,15 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
 
         LogLog.error("GELF Cannot determine its server. Host name "+getLocalHostName()+" did not matched anything from map "+graylogHostMap);
     }
-
+    
+    /**
+     * @param addLocation the addLocation to set
+     */
+    public void setAddLocation(boolean addLocation)
+    {
+        this.addLocation = addLocation;
+    }
+    
     public String getFacility() {
         return facility;
     }
@@ -162,7 +171,7 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
 
     private void appendNoLimit(LoggingEvent event)
     {
-        GelfMessage gelfMessage = GelfMessageFactory.makeMessage(event, this);
+        GelfMessage gelfMessage = GelfMessageFactory.makeMessage(event, this, addLocation ? event.getLocationInformation() : null);
 
         if(getGelfSender() == null || !getGelfSender().sendMessage(gelfMessage)) {
             errorHandler.error("Could not send GELF message");

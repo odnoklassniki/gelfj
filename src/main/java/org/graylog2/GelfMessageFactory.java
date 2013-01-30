@@ -19,13 +19,12 @@ public class GelfMessageFactory {
     private static final String THREAD_NAME = "thread";
     private static final String JAVA_TIMESTAMP = "timestampMs";
     
-    public static final GelfMessage makeMessage(LoggingEvent event, GelfMessageProvider provider) {
+    public static final GelfMessage makeMessage(LoggingEvent event, GelfMessageProvider provider, LocationInfo locationInformation) {
         long timeStamp = Log4jVersionChecker.getTimeStamp(event);
         Level level = event.getLevel();
 
-        LocationInfo locationInformation = event.getLocationInformation();
-        String file = locationInformation.getFileName();
-        String lineNumber = locationInformation.getLineNumber();
+        String file = locationInformation == null ? null : locationInformation.getFileName();
+        String lineNumber = locationInformation == null ? null : locationInformation.getLineNumber();
 
         String renderedMessage = event.getRenderedMessage();
         String shortMessage;
