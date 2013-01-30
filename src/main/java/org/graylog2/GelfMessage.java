@@ -18,6 +18,7 @@ public class GelfMessage {
     private static final String ID_NAME = "id";
     private static final String GELF_VERSION = "1.0";
     private static final byte[] GELF_CHUNKED_ID = new byte[]{0x1e, 0x0f};
+    private static final int GELF_CHUNK_HEADER_LENGTH = GELF_CHUNKED_ID.length+8+2; // magic + 8 byte message id + 2 byte message number and index
 
     private String version = GELF_VERSION;
     private String host;
@@ -188,7 +189,7 @@ public class GelfMessage {
 
     public List<byte[]> toDatagrams(int maxChunkSize) {
         byte[] messageBytes = toGzipMessage();
-        List<byte[]> datagrams = new ArrayList<byte[]>();
+        List<byte[]> datagrams = new ArrayList<byte[]>(messageBytes.length/maxChunkSize+1);
         if (messageBytes.length > maxChunkSize) {
             sliceDatagrams(messageBytes, datagrams, maxChunkSize);
         } else {
@@ -198,22 +199,20 @@ public class GelfMessage {
     }
 
     private void sliceDatagrams(byte[] messageBytes, List<byte[]> datagrams, int maxChunkSize) {
-        int messageLength = messageBytes.length;
-        byte[] messageId = ByteBuffer.allocate(8)
-            .putInt((int) System.currentTimeMillis())       // 4 least-significant-bytes of the time in millis
-            .put(hostBytes)                                // 4 least-significant-bytes of the host
-            .array();
+        final int messageLength = messageBytes.length;
+        final int timeMillis = (int) System.currentTimeMillis();
 
         int num = ((Double) Math.ceil((double) messageLength / maxChunkSize)).intValue();
         for (int idx = 0; idx < num; idx++) {
-            byte[] header = concatByteArray(GELF_CHUNKED_ID, concatByteArray(messageId, new byte[]{(byte) idx, (byte) num}));
             int from = idx * maxChunkSize;
-            int to = from + maxChunkSize;
-            if (to >= messageLength) {
-                to = messageLength;
-            }
-            byte[] datagram = concatByteArray(header, messageBytes, from, to);
-            datagrams.add(datagram);
+            int length = Math.min( maxChunkSize, messageLength - from);
+
+            ByteBuffer chunk=ByteBuffer.allocate(GELF_CHUNK_HEADER_LENGTH + length);
+            // write header
+            chunk.put(GELF_CHUNKED_ID).putInt(timeMillis).put(hostBytes).put((byte)idx).put((byte) num);
+            // write body
+            chunk.put(messageBytes,from,length);
+            datagrams.add(chunk.array());
         }
     }
 
@@ -329,15 +328,4 @@ public class GelfMessage {
         return str == null || "".equals(str.trim());
     }
 
-    private byte[] concatByteArray(byte[] first, byte[] second) {
-        byte[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
-    
-    private byte[] concatByteArray(byte[] first, byte[] second, int from, int to) {
-        byte[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, from, result, first.length, to-from);
-        return result;
-    }
 }
