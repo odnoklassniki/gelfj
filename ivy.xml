@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
+    <info organisation="ru.odnoklassniki"
+          module="gelfj"/>
+    <configurations>
+        <conf name="master" visibility="public"
+              description="contains only the artifact published by this module itself, with no transitive dependencies"/>
+        <conf name="runtime" visibility="public" transitive="false"/>
+        <conf name="compile" visibility="private" transitive="false"/>
+        <conf name="sources" visibility="public"
+              description="this configuration contains the source artifact of this module, if any."/>
+    </configurations>
+    <publications>
+        <artifact name="gelfj" type="jar" conf="master"/>
+        <artifact name="gelfj" type="source" ext="jar" conf="sources"/>
+    </publications>
+    <dependencies>
+       <dependency  org="com.googlecode.json-simple" name="json-simple" rev="1.1" conf="runtime->master,sources"/>
+    </dependencies>
+</ivy-module>

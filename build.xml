@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+
+
+<!DOCTYPE project [
+  <!ENTITY commonAntCommands SYSTEM "../one-deploy/build/common-ant.xml">
+]>
+<project name="gelfj" default="core" basedir=".">
+
+    <!-- ============================================================================ -->
+    <!-- Global definition -->
+    <!-- ============================================================================ -->
+
+    <!-- path to root -->
+    <property name="root.dir" value="${basedir}"/>
+
+    <!-- local.properties имеют высший приоритет -->
+    <property file="${root.dir}/local.properties"/>
+
+    <!-- проперти для деплоймент целей -->
+    <property file="${user.home}/one/${ant.project.name}.properties"/>
+
+    <property name="build.test-classes" value="${root.dir}/build/test-classes"/>
+
+    &commonAntCommands; <!-- include common ant commands -->
+
+    <!-- local.properties имеют высший приоритет -->
+    <property file="${root.dir}/local.properties" />
+
+    <!-- ============================================================================ -->
+    <!-- Initialize -->
+    <!-- ============================================================================ -->
+
+    <target name="check-environment" depends="check-j2ee"/>
+
+    <target name="init" depends="check-environment">
+
+        <echo message="build.compiler = ${build.compiler}"/>
+        <echo message="user.home = ${user.home}"/>
+        <echo message="java.home = ${java.home}"/>
+        <echo message="ant.home = ${ant.home}"/>
+        <echo message="java.class.path = ${java.class.path}"/>
+        <echo message=""/>
+
+        <path id="compile.classpath.ref">
+            <fileset dir="${lib}" includes="**/*.jar" erroronmissingdir="false"/>
+            <pathelement path="${depend.classpath}"/>
+        </path>
+        <property name="compile.classpath" refid="compile.classpath.ref"/>
+    </target>
+
+
+    <!-- ============================================================================ -->
+    <!-- Compile All classes -->
+    <!-- ============================================================================ -->
+    <target name="compile-classes" depends="init, prepare-build">
+        <antcall target="compile-classes-common">
+            <param name="compile.src" value="${src}"/>
+            <param name="compile.classes" value="${build.classes}"/>
+        </antcall>
+    </target>
+
+    <!-- ============================================================================ -->
+    <!-- Build client jars library files -->
+    <!-- ============================================================================ -->
+    <target name="client-jar" depends="compile-classes">
+        <antcall target="info">
+            <param name="info.msg" value="Build '${ant.project.name}' util library."/>
+        </antcall>
+
+        <jar jarfile="${build.lib}/${ant.project.name}-${build.number.str}.jar">
+            <manifest>
+                <attribute name="Build-By" value="${user.name}"/>
+                <attribute name="Build" value="${build.number.str}"/>
+            </manifest>
+
+            <fileset dir="${build.classes}"/>
+
+            <zipfileset dir="${root.dir}" includes="build.number" prefix="${ant.project.name}"/>
+        </jar>
+    </target>
+
+    <target name="ivy-assemble-source-jars">
+        <mkdir dir="${ivy.deliver.source.dir}"/>
+        <jar jarfile="${ivy.deliver.source.dir}/${ant.project.name}.jar">
+            <fileset dir="${src}"/>
+        </jar>
+    </target>
+
+    <!-- ============================================================================ -->
+    <!-- Build package release -->
+    <!-- ============================================================================ -->
+    <target name="build">
+        <property name="banner.title" value="Development building '${ant.project.name} ${build.number.str}'."/>
+
+        <antcall target="ivy-retrieve-all"/>
+
+        <path id="depend.classpath.ref">
+            <fileset dir="${build.ivy.lib}" includes="**/*.jar"/>
+        </path>
+        <property name="depend.classpath" refid="depend.classpath.ref"/>
+
+        <antcall target="client-jar"/>
+    </target>
+
+    <!-- ============================================================================ -->
+    <!-- MANDATORY TASK -->
+    <!-- Build package release with dependecies -->
+    <!-- ============================================================================ -->
+    <target name="build-release">
+        <antcall target="ivy-retrieve-all"/>
+
+        <path id="depend.classpath.ref">
+            <fileset dir="${build.ivy.lib}" includes="**/*.jar"/>
+        </path>
+        <property name="depend.classpath" refid="depend.classpath.ref"/>
+
+        <antcall target="client-jar"/>
+
+        <copy todir="${build.deploy.client.lib}">
+            <fileset dir="${build.lib}" includes="*.jar"/>
+            <chainedmapper>
+                <globmapper from="${ant.project.name}.jar" to="${ant.project.name}-${build.number.str}.jar"/>
+                <identitymapper/>
+            </chainedmapper>
+        </copy>
+    </target>
+
+
+    <!-- ============================================================================ -->
+    <!-- MANDATORY TASK -->
+    <!-- Deploy package release -->
+    <!-- ============================================================================ -->
+    <target name="deploy-release">
+    	<fail>
+    	    This is library project and can not be deployed.
+    	</fail>
+    </target>
+
+
+    <target name="core" depends="project-instructions"/>
+
+    <!-- ============================================================================ -->
+    <!-- Compile All test classes -->
+    <!-- ============================================================================ -->
+    <target name="compile-test-classes" depends="compile-classes">
+        <mkdir dir="${build.test-classes}"/>
+        <path id="compile-test.classpath.ref">
+            <path refid="compile.classpath.ref"/>
+            <pathelement path="${build.classes}"/>
+        </path>
+
+        <property name="compile.classpath" refid="compile-test.classpath.ref"/>
+
+        <antcall target="compile-classes-common">
+            <param name="compile.src" value="${src}/../test"/>
+            <param name="compile.classes" value="${build.test-classes}"/>
+            <param name="compile.classpath" refid="compile-test.classpath.ref"/>
+        </antcall>
+    </target>
+
+    <target name="test" depends="build, compile-test-classes">
+        <property name="test-report" value="${root.dir}/build/test-report"/>
+        <mkdir dir="${test-report}"/>
+
+        <antcall target="ivy-retrieve-all"/>
+        <path id="depend.classpath.ref">
+            <fileset dir="${build.ivy.lib}" includes="**/*.jar"/>
+        </path>
+        <property name="depend.classpath" refid="depend.classpath.ref"/>
+
+        <antcall target="compile-test-classes"/>
+
+        <path id="test.classpath.ref">
+            <pathelement path="${build.tmp}"/>
+            <pathelement path="${build.classes}"/>
+            <pathelement path="${build.test-classes}"/>
+            <pathelement path="${src}/main/resources"/>
+            <pathelement path="${src}/test/resources"/>
+
+            <fileset dir="${build.ivy.lib}" includes="**/*.jar"/>
+        </path>
+
+        <echo message="Run integration tests..."/>
+
+        <junit fork="yes">
+            <classpath refid="test.classpath.ref"/>
+            <formatter type="brief" usefile="false"/>
+            <test name="one.conf.dynamic.ConfPropertyBeanTest"/>
+            <jvmarg value="-Xdebug"/>
+            <jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=6003"/>
+        </junit>
+    </target>
+
+</project>
