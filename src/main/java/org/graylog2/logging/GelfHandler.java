@@ -103,7 +103,13 @@ public class GelfHandler
   {
     try
     {
-      return InetAddress.getLocalHost().getHostName();
+      String hostName = InetAddress.getLocalHost().getHostName();
+      // if this is FQDN - strip the domain off
+      int pointPos = hostName.indexOf('.');
+      if (pointPos>0)
+          hostName = hostName.substring(0,pointPos);
+      
+      return hostName;
     }
     catch ( final UnknownHostException uhe )
     {
