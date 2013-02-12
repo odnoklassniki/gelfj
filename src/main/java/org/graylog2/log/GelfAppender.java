@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.ErrorManager;
 
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Category;
@@ -115,16 +116,26 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
         return originHost;
     }
 
-    private  String getLocalHostName() {
-        String hostName = null;
-        try {
-            hostName = InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            errorHandler.error("Unknown local hostname", e, ErrorCode.GENERIC_FAILURE);
-        }
-
+    private String getLocalHostName()
+    {
+      try
+      {
+        String hostName = InetAddress.getLocalHost().getHostName();
+        // if this is FQDN - strip the domain off
+        int pointPos = hostName.indexOf('.');
+        if (pointPos>0)
+            hostName = hostName.substring(0,pointPos);
+        
         return hostName;
+      }
+      catch ( final UnknownHostException e )
+      {
+          errorHandler.error("Unknown local hostname", e, ErrorCode.GENERIC_FAILURE);
+      }
+
+      return null;
     }
+
 
     public void setOriginHost(String originHost) {
         this.originHost = originHost;
