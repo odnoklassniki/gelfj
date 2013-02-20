@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPOutputStream;
 
 public class GelfMessage {
@@ -19,6 +20,8 @@ public class GelfMessage {
     private static final String GELF_VERSION = "1.0";
     private static final byte[] GELF_CHUNKED_ID = new byte[]{0x1e, 0x0f};
     private static final int GELF_CHUNK_HEADER_LENGTH = GELF_CHUNKED_ID.length+8+2; // magic + 8 byte message id + 2 byte message number and index
+    
+    private static final AtomicLong idGen = new AtomicLong();
 
     private String version = GELF_VERSION;
     private String host;
@@ -200,7 +203,7 @@ public class GelfMessage {
 
     private void sliceDatagrams(byte[] messageBytes, List<byte[]> datagrams, int maxChunkSize) {
         final int messageLength = messageBytes.length;
-        final int timeMillis = (int) System.currentTimeMillis();
+        final int timeMillis = (int) idGen.incrementAndGet() & 0x7FFFFFFF;
 
         int num = ((Double) Math.ceil((double) messageLength / maxChunkSize)).intValue();
         for (int idx = 0; idx < num; idx++) {
@@ -219,7 +222,11 @@ public class GelfMessage {
     private byte[] lastFourAsciiBytes(String host) {
         final String shortHost = host.length() >= 4 ? host.substring(host.length() - 4) : host;
         try {
-            return shortHost.getBytes("ASCII");
+            byte[] bytes = shortHost.getBytes("ASCII");
+            if (bytes.length<4)  {
+                bytes = Arrays.copyOf(bytes, 4);
+            }
+            return bytes;
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException("JVM without ascii support?", e);
         }
