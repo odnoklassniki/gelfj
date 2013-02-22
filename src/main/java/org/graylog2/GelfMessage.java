@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,10 +24,18 @@ public class GelfMessage {
     private static final int GELF_CHUNK_HEADER_LENGTH = GELF_CHUNKED_ID.length+8+2; // magic + 8 byte message id + 2 byte message number and index
     
     private static final AtomicLong idGen = new AtomicLong();
+    private static final byte[] host4bytes ;
+    
+    static {
+        try {
+            host4bytes = last4bytes( InetAddress.getLocalHost().getAddress() );
+        } catch (UnknownHostException e) {
+            throw new IllegalStateException("No localhost found");
+        }
+    }
 
     private String version = GELF_VERSION;
     private String host;
-    private byte[] hostBytes = lastFourAsciiBytes("none");
     private String shortMessage;
     private String fullMessage;
     private Long timestamp;
@@ -40,6 +50,22 @@ public class GelfMessage {
     }
 
     // todo: merge these constructors.
+
+    /**
+     * @param address
+     * @return
+     */
+    private static byte[] last4bytes(byte[] address)
+    {
+        if (address.length>4) {
+            // IPv6. getting last 4 bytes of address
+            return Arrays.copyOfRange(address, address.length-4, address.length);
+        }
+        if (address.length!=4) {
+            throw new IllegalStateException("Can understand inly IPv4 or IPv6 addresses");
+        }
+        return address;
+    }
 
     public GelfMessage(String shortMessage, String fullMessage, Date timestamp, String level) {
         this.shortMessage = shortMessage;
@@ -212,23 +238,10 @@ public class GelfMessage {
 
             ByteBuffer chunk=ByteBuffer.allocate(GELF_CHUNK_HEADER_LENGTH + length);
             // write header
-            chunk.put(GELF_CHUNKED_ID).putInt(timeMillis).put(hostBytes).put((byte)idx).put((byte) num);
+            chunk.put(GELF_CHUNKED_ID).putInt(timeMillis).put(host4bytes).put((byte)idx).put((byte) num);
             // write body
             chunk.put(messageBytes,from,length);
             datagrams.add(chunk.array());
-        }
-    }
-
-    private byte[] lastFourAsciiBytes(String host) {
-        final String shortHost = host.length() >= 4 ? host.substring(host.length() - 4) : host;
-        try {
-            byte[] bytes = shortHost.getBytes("ASCII");
-            if (bytes.length<4)  {
-                bytes = Arrays.copyOf(bytes, 4);
-            }
-            return bytes;
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("JVM without ascii support?", e);
         }
     }
 
@@ -246,7 +259,6 @@ public class GelfMessage {
 
     public void setHost(String host) {
         this.host = host;
-        this.hostBytes = lastFourAsciiBytes(host);
     }
 
     public String getShortMessage() {
