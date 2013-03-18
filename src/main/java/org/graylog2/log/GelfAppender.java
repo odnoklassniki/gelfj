@@ -204,7 +204,7 @@ public class GelfAppender extends AppenderSkeleton implements GelfMessageProvide
         
         if (second < nowSec ) {
             if (droppedmessagecounter > 0 ) {
-                LoggingEvent le = new LoggingEvent( getClass().getName(), Category.getInstance(getClass()), Priority.WARN, "Dropped "+droppedmessagecounter+" messages last second, because limited to "+messageRateLimit+" messages per second", null);
+                LoggingEvent le = new LoggingEvent( getClass().getName(), new Category(getClass().getName()) { /* this is to overcome protected modifier of category class */}, Priority.WARN, "Dropped "+droppedmessagecounter+" messages last second, because limited to "+messageRateLimit+" messages per second", null);
                 appendNoLimit(le);
                 
                 droppedmessagecounter = 0;
